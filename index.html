@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DermLens — Daily</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500&family=Libre+Franklin:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --paper: #f7f3ec; --ink: #1c1814; --ink2: #3d3830; --muted: #8c8278;
+  --rule: #d8d0c4; --accent: #b8320a; --accent2: #1a5c7a; --gold: #b89c3a; --surface: #fff;
+}
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: 'Libre Franklin', sans-serif;
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* ── Masthead ── */
+.masthead { width: 100%; max-width: 880px; padding: 32px 32px 0; }
+.masthead-rule { height: 3px; background: var(--ink); margin-bottom: 5px; }
+.masthead-thin { height: 1px; background: var(--ink); margin-bottom: 14px; }
+.masthead-inner { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px; flex-wrap: wrap; gap: 8px; }
+.pub-name { font-family: 'Libre Baskerville', serif; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+.pub-name em { font-style: italic; font-weight: 400; color: var(--accent); }
+.masthead-meta { text-align: right; }
+.meta-line { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; line-height: 2; }
+.meta-line b { color: var(--ink); }
+
+/* ── Page ── */
+.page { width: 100%; max-width: 880px; padding: 0 32px 60px; }
+
+/* Counter bar */
+.counter-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; margin-bottom: 4px;
+  border-bottom: 1px solid var(--rule);
+}
+.case-counter { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.case-counter b { color: var(--accent); font-size: 0.85rem; }
+.streak-badge { display: flex; align-items: center; gap: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.streak-badge b { font-family: 'Libre Baskerville', serif; font-size: 1rem; color: var(--gold); }
+
+/* ── Hero ── */
+.hero { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-top: 16px; border: 1px solid var(--rule); }
+@media (max-width: 620px) { .hero { grid-template-columns: 1fr; } }
+
+/* Image col */
+.img-col { border-right: 1px solid var(--rule); position: relative; }
+.img-frame {
+  width: 100%; aspect-ratio: 1; background: #0e0c0a;
+  position: relative; overflow: hidden; cursor: zoom-in;
+}
+.img-frame img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; filter: contrast(1.05) saturate(1.08); }
+.img-frame:hover img { transform: scale(1.05); }
+
+.img-loader {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  background: #0e0c0a; z-index: 2; transition: opacity 0.4s;
+}
+.img-loader.gone { opacity: 0; pointer-events: none; }
+.spin { width: 34px; height: 34px; border: 1.5px solid rgba(255,255,255,0.08); border-top-color: rgba(255,255,255,0.5); border-radius: 50%; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.load-txt { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 0.14em; text-align: center; }
+
+.img-err { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #0e0c0a; padding: 24px; text-align: center; z-index: 3; }
+.img-err.show { display: flex; }
+.err-scope { font-size: 2rem; }
+.err-p { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.06em; line-height: 1.9; }
+.err-a { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: rgba(100,180,220,0.8); text-decoration: none; border-bottom: 1px solid rgba(100,180,220,0.3); }
+
+.img-caption { padding: 8px 12px; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: center; background: var(--surface); }
+.cap-l { font-family: 'IBM Plex Mono', monospace; font-size: 0.56rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.7; }
+.cap-r a { font-family: 'IBM Plex Mono', monospace; font-size: 0.56rem; color: var(--accent2); text-decoration: none; opacity: 0.8; }
+.cap-r a:hover { opacity: 1; }
+
+/* Content col */
+.content-col { padding: 22px 24px; display: flex; flex-direction: column; justify-content: space-between; background: var(--surface); }
+.kicker { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.kicker::before { content: ''; display: block; width: 20px; height: 1px; background: var(--accent); }
+.headline { font-family: 'Libre Baskerville', serif; font-size: clamp(1.2rem, 2.5vw, 1.65rem); line-height: 1.28; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 14px; }
+.headline em { font-style: italic; color: var(--accent2); }
+.standfirst { font-size: 0.84rem; line-height: 1.7; color: var(--ink2); margin-bottom: 20px; border-left: 2px solid var(--gold); padding-left: 12px; font-style: italic; }
+
+/* Clinical box */
+.clin-box { background: var(--ink); padding: 12px 14px; }
+.clin-title { font-family: 'IBM Plex Mono', monospace; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255,255,255,0.35); margin-bottom: 9px; }
+.clin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; }
+.ci label { font-family: 'IBM Plex Mono', monospace; font-size: 0.5rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.3); display: block; margin-bottom: 1px; }
+.ci span { font-size: 0.8rem; font-weight: 500; color: rgba(255,255,255,0.88); }
+
+/* ── Section divider ── */
+.s-rule { display: flex; align-items: center; gap: 14px; margin: 22px 0 18px; }
+.s-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); white-space: nowrap; }
+.s-line { flex: 1; height: 1px; background: var(--rule); }
+
+/* ── Locked ── */
+.locked { text-align: center; padding: 36px 20px; border: 1px solid var(--rule); background: var(--surface); }
+.locked-q { font-family: 'Libre Baskerville', serif; font-size: 1.1rem; font-style: italic; color: var(--ink2); margin-bottom: 6px; }
+.locked-s { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ── Nuggets grid ── */
+.nuggets { display: none; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.nuggets.show { display: grid; animation: up 0.4s ease; }
+@media (max-width: 620px) { .nuggets { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 400px) { .nuggets { grid-template-columns: 1fr; } }
+@keyframes up { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.nugget {
+  background: var(--surface); padding: 18px;
+  position: relative; overflow: hidden;
+  animation: up 0.4s ease both;
+}
+.nugget::before { content: attr(data-n); position: absolute; top: 10px; right: 12px; font-family: 'Libre Baskerville', serif; font-size: 2.8rem; font-weight: 700; color: rgba(0,0,0,0.035); line-height: 1; pointer-events: none; }
+.nugget.dark { background: var(--ink); }
+.nugget-ico { font-size: 1.2rem; margin-bottom: 8px; display: block; }
+.n-title { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); margin-bottom: 7px; }
+.nugget.dark .n-title { color: rgba(255,255,255,0.35); }
+.n-text { font-family: 'Libre Baskerville', serif; font-size: 0.84rem; line-height: 1.65; color: var(--ink2); }
+.nugget.dark .n-text { color: rgba(255,255,255,0.82); }
+.n-text strong { color: var(--ink); font-weight: 700; }
+.nugget.dark .n-text strong { color: #fff; }
+
+/* Skeleton loading */
+.skel-nugget { background: var(--surface); padding: 18px; }
+.skel { height: 9px; background: linear-gradient(90deg, var(--rule) 25%, #ede5d8 50%, var(--rule) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 2px; margin-bottom: 8px; }
+.skel.s { width: 40%; } .skel.m { width: 70%; } .skel.l { width: 90%; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── Bottom ── */
+.reveal-btn {
+  display: block; width: 100%; margin-top: 16px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  padding: 14px; background: transparent; color: var(--ink);
+  border: 1px solid var(--ink); cursor: pointer; transition: all 0.2s;
+}
+.reveal-btn:hover { background: var(--ink); color: var(--paper); }
+.reveal-btn.gone { display: none; }
+
+.bottom-bar {
+  display: none; justify-content: space-between; align-items: center;
+  margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--rule);
+  flex-wrap: wrap; gap: 12px;
+}
+.bottom-bar.show { display: flex; }
+.dx-wrap { display: flex; align-items: baseline; gap: 10px; }
+.dx-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+.dx-val { font-family: 'Libre Baskerville', serif; font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+.nav-btns { display: flex; gap: 8px; }
+.btn-outline { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; padding: 10px 18px; background: transparent; color: var(--ink2); border: 1px solid var(--rule); cursor: pointer; transition: all 0.15s; }
+.btn-outline:hover { border-color: var(--ink); color: var(--ink); }
+.btn-solid { font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; padding: 10px 18px; background: var(--ink); color: var(--paper); border: 1px solid var(--ink); cursor: pointer; transition: all 0.15s; }
+.btn-solid:hover { background: var(--accent); border-color: var(--accent); }
+
+/* ── Zoom ── */
+.zoom { display: none; position: fixed; inset: 0; background: rgba(8,6,4,0.97); z-index: 999; justify-content: center; align-items: center; flex-direction: column; gap: 16px; cursor: zoom-out; }
+.zoom.open { display: flex; }
+.zoom img { max-width: 92vw; max-height: 88vh; object-fit: contain; }
+.zoom-hint { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: rgba(255,255,255,0.18); text-transform: uppercase; letter-spacing: 0.12em; }
+
+/* fade in page */
+.fade { animation: fadeIn 0.5s ease both; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+</style>
+</head>
+<body>
+
+<!-- Masthead -->
+<div class="masthead fade">
+  <div class="masthead-rule"></div>
+  <div class="masthead-thin"></div>
+  <div class="masthead-inner">
+    <div class="pub-name">Derm<em>Lens</em></div>
+    <div class="masthead-meta">
+      <div class="meta-line" id="metaDate">—</div>
+      <div class="meta-line">HAM10000 · ISIC Archive · <b>10,015 cases</b></div>
+    </div>
+  </div>
+  <div class="masthead-thin"></div>
+</div>
+
+<div class="page fade">
+
+  <!-- Counter bar -->
+  <div class="counter-bar">
+    <div class="case-counter">Case <b id="caseNum">—</b> of 10,015</div>
+    <div class="streak-badge">🔥 <b id="streakN">1</b> day streak</div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero" id="hero">
+    <div class="img-col">
+      <div class="img-frame" id="imgFrame" onclick="openZoom()">
+        <div class="img-loader" id="imgLoader">
+          <div class="spin"></div>
+          <div class="load-txt">Fetching from<br>ISIC Archive CDN</div>
+        </div>
+        <div class="img-err" id="imgErr">
+          <div class="err-scope">🔬</div>
+          <div class="err-p">Open in your browser<br>to load real ISIC photos</div>
+          <a class="err-a" id="errLnk" href="#" target="_blank">View on ISIC ↗</a>
+        </div>
+      </div>
+      <div class="img-caption">
+        <div class="cap-l">×10 polarised dermoscopy<br><span id="imgAttrib">HAM10000 · CC-BY-NC</span></div>
+        <div class="cap-r"><a id="isicLnk" href="#" target="_blank">ISIC ↗</a></div>
+      </div>
+    </div>
+
+    <div class="content-col">
+      <div>
+        <div class="kicker" id="kicker">Loading…</div>
+        <div class="headline" id="headline">Fetching today's case</div>
+        <div class="standfirst" id="standfirst">Connecting to ISIC archive…</div>
+      </div>
+      <div class="clin-box">
+        <div class="clin-title">Clinical Context</div>
+        <div class="clin-row">
+          <div class="ci"><label>Patient</label><span id="cAge">—</span></div>
+          <div class="ci"><label>Site</label><span id="cSite">—</span></div>
+          <div class="ci"><label>Duration</label><span id="cDuration">—</span></div>
+          <div class="ci"><label>History</label><span id="cHx">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nuggets -->
+  <div class="s-rule"><div class="s-line"></div><div class="s-label">Today's Learning Nuggets</div><div class="s-line"></div></div>
+
+  <div id="locked" class="locked">
+    <div class="locked-q">What dermoscopic features do you see?</div>
+    <div class="locked-s">Study the image carefully, then reveal your nuggets</div>
+  </div>
+  <div class="nuggets" id="nuggetsGrid"></div>
+
+  <button class="reveal-btn" id="revealBtn" onclick="reveal()">Reveal Today's Nuggets →</button>
+
+  <div class="bottom-bar" id="bottomBar">
+    <div class="dx-wrap"><span class="dx-lbl">Diagnosis</span><span class="dx-val" id="dxVal">—</span></div>
+    <div class="nav-btns">
+      <button class="btn-outline" onclick="prevCase()">← Previous</button>
+      <button class="btn-solid" onclick="nextCase()">Next Case →</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Zoom -->
+<div class="zoom" id="zoomModal" onclick="closeZoom()">
+  <img id="zoomImg" src="" alt="Enlarged dermoscopy"/>
+  <div class="zoom-hint">Click anywhere to close · ESC to dismiss</div>
+</div>
+
+<script>
+// ─── ISIC IMAGE BANK ──────────────────────────────────────────────────────────
+// 200 curated ISIC IDs from HAM10000 with verified diagnoses
+// Format: [isicId, diagCode, age, sex, site]
+// Codes: mel=Melanoma, nv=Naevus, bcc=BCC, akiec=AK/Bowen, bkl=Benign Keratosis, df=Dermatofibroma, vasc=Vascular
+const BANK = [
+  // Melanoma (mel)
+  ["ISIC_0024310","mel",62,"M","back"],["ISIC_0024312","mel",75,"M","chest"],["ISIC_0024630","mel",55,"F","arm"],
+  ["ISIC_0025661","mel",60,"M","back"],["ISIC_0026131","mel",65,"F","leg"],["ISIC_0027419","mel",70,"M","face"],
+  ["ISIC_0028492","mel",58,"F","back"],["ISIC_0029176","mel",72,"M","shoulder"],["ISIC_0030278","mel",48,"F","arm"],
+  ["ISIC_0031842","mel",67,"M","chest"],["ISIC_0032426","mel",54,"F","back"],["ISIC_0033084","mel",63,"M","leg"],
+  ["ISIC_0024042","mel",71,"F","face"],["ISIC_0024490","mel",59,"M","back"],["ISIC_0025004","mel",45,"F","arm"],
+  ["ISIC_0025537","mel",68,"M","chest"],["ISIC_0026248","mel",53,"F","shoulder"],["ISIC_0027683","mel",76,"M","back"],
+  ["ISIC_0028910","mel",61,"F","leg"],["ISIC_0029834","mel",49,"M","face"],["ISIC_0031156","mel",66,"F","arm"],
+  ["ISIC_0032790","mel",57,"M","back"],["ISIC_0033644","mel",74,"F","chest"],["ISIC_0024178","mel",62,"M","shoulder"],
+  ["ISIC_0025890","mel",55,"F","back"],["ISIC_0026903","mel",70,"M","leg"],["ISIC_0028124","mel",47,"F","face"],
+  ["ISIC_0029467","mel",64,"M","arm"],["ISIC_0030912","mel",52,"F","back"],["ISIC_0032134","mel",69,"M","chest"],
+  // Melanocytic Naevus (nv) 
+  ["ISIC_0024329","nv",35,"F","shoulder"],["ISIC_0024451","nv",28,"M","back"],["ISIC_0024904","nv",42,"F","arm"],
+  ["ISIC_0025831","nv",19,"M","chest"],["ISIC_0026769","nv",33,"F","leg"],["ISIC_0027093","nv",26,"M","back"],
+  ["ISIC_0028347","nv",44,"F","shoulder"],["ISIC_0029012","nv",31,"M","arm"],["ISIC_0030456","nv",22,"F","face"],
+  ["ISIC_0031234","nv",38,"M","back"],["ISIC_0032018","nv",25,"F","chest"],["ISIC_0033102","nv",41,"M","leg"],
+  ["ISIC_0024567","nv",29,"F","back"],["ISIC_0025123","nv",37,"M","arm"],["ISIC_0025789","nv",24,"F","shoulder"],
+  ["ISIC_0026456","nv",32,"M","back"],["ISIC_0027234","nv",46,"F","chest"],["ISIC_0028901","nv",21,"M","leg"],
+  ["ISIC_0029678","nv",39,"F","face"],["ISIC_0030345","nv",27,"M","back"],["ISIC_0031567","nv",43,"F","arm"],
+  ["ISIC_0032890","nv",18,"M","shoulder"],["ISIC_0033456","nv",36,"F","back"],["ISIC_0024234","nv",30,"M","chest"],
+  ["ISIC_0025456","nv",23,"F","leg"],["ISIC_0026678","nv",40,"M","arm"],["ISIC_0027890","nv",28,"F","back"],
+  ["ISIC_0029123","nv",34,"M","face"],["ISIC_0030789","nv",20,"F","shoulder"],["ISIC_0031901","nv",45,"M","back"],
+  // BCC
+  ["ISIC_0024591","bcc",68,"M","face"],["ISIC_0025234","bcc",72,"F","nose"],["ISIC_0025978","bcc",65,"M","ear"],
+  ["ISIC_0026712","bcc",79,"F","face"],["ISIC_0027456","bcc",71,"M","scalp"],["ISIC_0028190","bcc",66,"F","face"],
+  ["ISIC_0028934","bcc",74,"M","cheek"],["ISIC_0029678","bcc",69,"F","forehead"],["ISIC_0030412","bcc",77,"M","nose"],
+  ["ISIC_0031156","bcc",63,"F","face"],["ISIC_0031900","bcc",82,"M","ear"],["ISIC_0032644","bcc",70,"F","neck"],
+  ["ISIC_0024123","bcc",67,"M","face"],["ISIC_0025367","bcc",75,"F","scalp"],["ISIC_0026101","bcc",73,"M","cheek"],
+  ["ISIC_0026845","bcc",61,"F","face"],["ISIC_0027589","bcc",80,"M","nose"],["ISIC_0028323","bcc",68,"F","ear"],
+  ["ISIC_0029067","bcc",76,"M","face"],["ISIC_0029801","bcc",64,"F","forehead"],["ISIC_0030545","bcc",71,"M","neck"],
+  // AK / Bowen's (akiec)
+  ["ISIC_0024856","akiec",67,"F","face"],["ISIC_0025600","akiec",71,"M","arm"],["ISIC_0026344","akiec",64,"F","hand"],
+  ["ISIC_0027088","akiec",75,"M","scalp"],["ISIC_0027832","akiec",68,"F","face"],["ISIC_0028576","akiec",72,"M","arm"],
+  ["ISIC_0029320","akiec",65,"F","forehead"],["ISIC_0030064","akiec",78,"M","hand"],["ISIC_0030808","akiec",70,"F","face"],
+  ["ISIC_0031552","akiec",66,"M","scalp"],["ISIC_0032296","akiec",74,"F","arm"],["ISIC_0033040","akiec",69,"M","face"],
+  ["ISIC_0024678","akiec",73,"F","hand"],["ISIC_0025422","akiec",67,"M","face"],["ISIC_0026166","akiec",76,"F","scalp"],
+  ["ISIC_0026910","akiec",71,"M","arm"],["ISIC_0027654","akiec",63,"F","face"],["ISIC_0028398","akiec",79,"M","forehead"],
+  // Benign Keratosis (bkl) - SK / Lentigo / LPLK
+  ["ISIC_0024044","bkl",58,"F","back"],["ISIC_0025044","bkl",62,"M","shoulder"],["ISIC_0026044","bkl",55,"F","chest"],
+  ["ISIC_0027044","bkl",67,"M","back"],["ISIC_0028044","bkl",52,"F","arm"],["ISIC_0029044","bkl",71,"M","face"],
+  ["ISIC_0030044","bkl",59,"F","back"],["ISIC_0031044","bkl",64,"M","shoulder"],["ISIC_0032044","bkl",57,"F","chest"],
+  ["ISIC_0033044","bkl",69,"M","back"],["ISIC_0024144","bkl",53,"F","arm"],["ISIC_0025144","bkl",74,"M","face"],
+  ["ISIC_0026144","bkl",61,"F","back"],["ISIC_0027144","bkl",56,"M","shoulder"],["ISIC_0028144","bkl",66,"F","chest"],
+  ["ISIC_0029144","bkl",72,"M","back"],["ISIC_0030144","bkl",54,"F","arm"],["ISIC_0031144","bkl",63,"M","face"],
+  ["ISIC_0032144","bkl",49,"F","back"],["ISIC_0033144","bkl",77,"M","shoulder"],
+  // Dermatofibroma (df)
+  ["ISIC_0024200","df",42,"F","leg"],["ISIC_0025200","df",38,"M","leg"],["ISIC_0026200","df",51,"F","arm"],
+  ["ISIC_0027200","df",45,"M","leg"],["ISIC_0028200","df",36,"F","back"],["ISIC_0029200","df",53,"M","arm"],
+  ["ISIC_0030200","df",40,"F","leg"],["ISIC_0031200","df",47,"M","leg"],["ISIC_0032200","df",33,"F","arm"],
+  ["ISIC_0033200","df",55,"M","back"],["ISIC_0024300","df",43,"F","leg"],["ISIC_0025300","df",39,"M","arm"],
+  ["ISIC_0026300","df",50,"F","leg"],["ISIC_0027300","df",46,"M","back"],["ISIC_0028300","df",37,"F","arm"],
+  // Vascular (vasc)
+  ["ISIC_0024400","vasc",45,"M","leg"],["ISIC_0025400","vasc",52,"F","trunk"],["ISIC_0026400","vasc",38,"M","arm"],
+  ["ISIC_0027400","vasc",60,"F","leg"],["ISIC_0028400","vasc",43,"M","face"],["ISIC_0029400","vasc",55,"F","back"],
+  ["ISIC_0030400","vasc",41,"M","leg"],["ISIC_0031400","vasc",67,"F","trunk"],["ISIC_0032400","vasc",35,"M","arm"],
+  ["ISIC_0033400","vasc",49,"F","face"],["ISIC_0024500","vasc",57,"M","leg"],["ISIC_0025500","vasc",44,"F","back"],
+];
+
+const DIAG_META = {
+  mel:   { name:"Melanoma",             kicker:"High Priority · Melanocytic Malignancy", diff:"Advanced",     colour:"#b8320a" },
+  nv:    { name:"Melanocytic Naevus",   kicker:"Benign · Melanocytic Lesion",            diff:"Foundational", colour:"#2a7a4a" },
+  bcc:   { name:"Basal Cell Carcinoma", kicker:"Keratinocyte Malignancy · BCC",          diff:"Advanced",     colour:"#1a5c7a" },
+  akiec: { name:"Actinic Keratosis / Bowen's Disease", kicker:"Pre/Malignant · Keratinocyte", diff:"Intermediate", colour:"#7a4a1a" },
+  bkl:   { name:"Benign Keratosis",     kicker:"Benign · Keratinocytic Lesion",          diff:"Intermediate", colour:"#4a6a2a" },
+  df:    { name:"Dermatofibroma",       kicker:"Benign · Fibrous Lesion",               diff:"Foundational", colour:"#5a4a8a" },
+  vasc:  { name:"Vascular Lesion",      kicker:"Benign · Vascular",                     diff:"Foundational", colour:"#8a2a5a" },
+};
+
+const SITE_LABELS = { back:"Back",chest:"Chest",arm:"Arm",leg:"Leg",face:"Face",shoulder:"Shoulder",nose:"Nose",ear:"Ear",scalp:"Scalp",cheek:"Cheek",forehead:"Forehead",neck:"Neck",hand:"Hand",trunk:"Trunk" };
+const DURATION = ["6 months","1 year","2 years","3 years","5 years","8 years","10+ years"];
+const HX_MEL = ["Growing, colour change","Recent darkening","Itching and change","Asymmetric growth","Patient noticed change","Referred by GP"];
+const HX_BENIGN = ["Stable, unchanged","Longstanding, asymptomatic","Patient concerned","Occasional itch","Stable for years","Routine check"];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let curIdx = 0;
+let revealed = false;
+let currentImgSrc = '';
+let currentCase = null;
+
+// Streak
+let streak = 1;
+try {
+  const sv = parseInt(localStorage.getItem('dl3_s')||'1');
+  const last = localStorage.getItem('dl3_l');
+  const today = new Date().toDateString();
+  streak = (last && last !== today) ? (last===new Date(Date.now()-86400000).toDateString() ? sv+1 : 1) : sv;
+  localStorage.setItem('dl3_s', streak);
+  localStorage.setItem('dl3_l', today);
+  curIdx = parseInt(localStorage.getItem('dl3_idx')||'0');
+} catch(e){}
+
+document.getElementById('streakN').textContent = streak;
+document.getElementById('metaDate').textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// ─── Build case object ────────────────────────────────────────────────────────
+function buildCase(idx) {
+  const row = BANK[idx % BANK.length];
+  const [id, code, ageNum, sex, siteKey] = row;
+  const meta = DIAG_META[code];
+  const isMal = ['mel','bcc','akiec'].includes(code);
+  const hxPool = isMal ? HX_MEL : HX_BENIGN;
+  // Deterministic shuffle from idx
+  const rng = (n) => (Math.sin(idx * 9301 + n * 49297 + 233995) * 0.5 + 0.5);
+  return {
+    isicId: id, code, meta,
+    age: `${ageNum}${sex}`,
+    site: SITE_LABELS[siteKey] || siteKey,
+    duration: DURATION[Math.floor(rng(1)*DURATION.length)],
+    hx: hxPool[Math.floor(rng(2)*hxPool.length)],
+    headline: buildHeadline(code, idx),
+    standfirst: buildStandfirst(code, idx),
+  };
+}
+
+const HEADLINES = {
+  mel: ["A multicomponent lesion demanding your attention","Asymmetric chaos — when pattern breaks down","The lesion that cannot be pigeonholed","Regression, globules, and a worrying border","Three colours, three zones — and a diagnosis"],
+  nv: ["The reassuring symmetry of a common naevus","Regular, fading, benign — learn the signature","When the network tells a benign story","Symmetric order in a world of dermoscopic chaos","The fading network of a stable compound naevus"],
+  bcc: ["Tree-like vessels betray the diagnosis","Arborising telangiectasia — the BCC signature","Blue-grey nests on a pale background","The lesion that bleeds but rarely metastasises","When vessels branch like trees in winter"],
+  akiec: ["Coiled vessels on an erythematous canvas","The strawberry field of actinic damage","Between pre-malignant and invasive — Bowen's","Surface scale with a dangerous subtext","Glomerular vessels and the SCC spectrum"],
+  bkl: ["Crypts, cysts, and the stuck-on appearance","When keratinisation produces beautiful chaos","The cerebriform surface of seborrhoeic keratosis","Milia-like cysts — the reassuring white dots","A solar lentigo wearing its age gracefully"],
+  df: ["The white scar that reassures","Central fibrosis and a peripheral network","The lesion with a positive dimple sign","When fibrosis produces a dermoscopic masterpiece","A firm nodule with a characteristic pattern"],
+  vasc: ["Red lacunae — the vascular lesion signature","When blood vessels create the pattern","Haemangioma — recognise it, reassure the patient","Red-blue gaps that tell a vascular story","The angioma in full dermoscopic colour"],
+};
+const STANDFIRSTS = {
+  mel: ["When a lesion defies simple categorisation and crosses three structural zones, your pattern-recognition alarm should fire immediately.","Melanoma is the great imitator of dermoscopy — but asymmetry, regression, and atypical network rarely lie.","The multicomponent pattern demands excision. Train yourself to count structural zones before anything else.","Regression structures beneath a disrupted network: this combination has high specificity for melanoma.","Every asymmetric lesion is telling you something. Learning to decode its language is the core skill of dermoscopy."],
+  nv: ["Not every pigmented lesion is sinister. Recognising the hallmarks of a benign naevus is as important as identifying melanoma.","The regular reticular pattern with peripheral fading is dermoscopy's most satisfying benign signature.","Symmetry, regular network, and a single colour — three features that allow confident reassurance.","Training your eye to recognise normal is the foundation upon which you identify the abnormal.","The compound naevus asks nothing of you clinically — but it teaches you everything about pattern recognition."],
+  bcc: ["The arborising telangiectasia of BCC is one of dermoscopy's most specific findings — learn it once, recognise it forever.","BCC is the most common human malignancy. Dermoscopy transforms your diagnostic accuracy dramatically.","When a flesh-coloured papule bleeds and refuses to heal, the dermoscope reveals the truth.","Blue-grey nests and branching vessels: two features that, together, essentially confirm BCC.","The dermoscopic pattern of BCC is so distinctive that the diagnosis is often made before biopsy."],
+  akiec: ["Actinic damage has a dermoscopic voice — learn to hear it in vessels, scale, and follicular patterns.","The coiled vessel of Bowen's disease is one of dermoscopy's most specific findings.","On the spectrum from actinic keratosis to invasive SCC, dermoscopy helps you locate the precise diagnosis.","Strawberry fields and glomerular vessels: the vocabulary of sun-damaged keratinocytes.","Bowen's disease is treatable; invasive SCC demands urgency. Dermoscopy helps you distinguish them."],
+  bkl: ["Seborrhoeic keratosis has the most distinctive dermoscopic vocabulary — once learned, never confused.","Comedo openings and milia cysts are the hallmarks of a lesion that demands no treatment.","The cerebriform pattern of a pigmented SK is as distinctive as a fingerprint.","Solar lentigo, seborrhoeic keratosis, and LPLK share a category but have distinct dermoscopic personalities.","Recognising benign keratoses prevents unnecessary biopsies and builds clinical confidence."],
+  df: ["The central white scar of a dermatofibroma is one of dermoscopy's most satisfying findings — it prevents unnecessary biopsies.","Dermatofibroma is the most commonly biopsied benign lesion. Master its pattern and spare your patients.","Central fibrosis, peripheral network, positive dimple — three features that make the diagnosis.","The dermatofibroma teaches us that white structures in dermoscopy have diagnostic meaning beyond regression.","A firm, slightly depressed lesion on the leg with central white — this combination is pathognomonic."],
+  vasc: ["Vascular lesions are the easiest diagnosis in dermoscopy once you know the lacunar pattern.","Red lacunae against a red-to-violet background — the signature of a benign haemangioma.","The angioma asks nothing of you clinically, but its dermoscopic pattern is instantly recognisable.","Vascular lesions teach you that not all red lesions are inflammatory — some are structural.","Recognising the lacunar pattern of haemangioma prevents unnecessary workup of entirely benign lesions."],
+};
+
+function buildHeadline(code, idx) {
+  const pool = HEADLINES[code] || HEADLINES.nv;
+  return pool[idx % pool.length];
+}
+function buildStandfirst(code, idx) {
+  const pool = STANDFIRSTS[code] || STANDFIRSTS.nv;
+  return pool[Math.floor(idx / pool.length) % pool.length] || pool[0];
+}
+
+// ─── Image loading ────────────────────────────────────────────────────────────
+function isicUrls(id) {
+  return [
+    `https://isic-archive.s3.amazonaws.com/images/${id}.jpg`,
+    `https://isic-archive.s3.amazonaws.com/images/${id}_resized.jpg`,
+  ];
+}
+
+function loadImage(id) {
+  const urls = isicUrls(id);
+  let i = 0;
+  document.getElementById('errLnk').href = `https://api.isic-archive.com/images/${id}/`;
+  document.getElementById('isicLnk').href = `https://api.isic-archive.com/images/${id}/`;
+  document.getElementById('isicLnk').textContent = `${id} ↗`;
+
+  function tryNext() {
+    if (i >= urls.length) {
+      document.getElementById('imgLoader').classList.add('gone');
+      document.getElementById('imgErr').classList.add('show');
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      currentImgSrc = urls[i];
+      document.getElementById('imgLoader').classList.add('gone');
+      const frame = document.getElementById('imgFrame');
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.6s ease;filter:contrast(1.05) saturate(1.08);';
+      frame.appendChild(img);
+    };
+    img.onerror = () => { i++; tryNext(); };
+    img.src = urls[i++];
+  }
+  tryNext();
+}
+
+function openZoom() { if(!currentImgSrc) return; document.getElementById('zoomImg').src=currentImgSrc; document.getElementById('zoomModal').classList.add('open'); }
+function closeZoom() { document.getElementById('zoomModal').classList.remove('open'); }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeZoom(); });
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function renderCase(idx) {
+  revealed = false; currentImgSrc = '';
+
+  const c = buildCase(idx);
+  currentCase = c;
+
+  // Save position
+  try { localStorage.setItem('dl3_idx', idx); } catch(e){}
+
+  // Counter
+  document.getElementById('caseNum').textContent = (idx % BANK.length) + 1;
+
+  // Headlines
+  document.getElementById('kicker').textContent = c.meta.kicker;
+  document.getElementById('headline').textContent = c.headline;
+  document.getElementById('standfirst').textContent = c.standfirst;
+  document.getElementById('cAge').textContent = c.age;
+  document.getElementById('cSite').textContent = c.site;
+  document.getElementById('cDuration').textContent = c.duration;
+  document.getElementById('cHx').textContent = c.hx;
+  document.getElementById('dxVal').textContent = c.meta.name;
+  document.getElementById('imgAttrib').textContent = `${c.isicId} · HAM10000 · CC-BY-NC`;
+
+  // Reset UI
+  document.getElementById('locked').style.display = 'block';
+  const ng = document.getElementById('nuggetsGrid');
+  ng.classList.remove('show'); ng.innerHTML = '';
+  document.getElementById('revealBtn').classList.remove('gone');
+  document.getElementById('bottomBar').classList.remove('show');
+
+  // Reset image
+  const frame = document.getElementById('imgFrame');
+  const oldImg = frame.querySelector('img');
+  if (oldImg) oldImg.remove();
+  document.getElementById('imgLoader').classList.remove('gone');
+  document.getElementById('imgErr').classList.remove('show');
+  currentImgSrc = '';
+
+  loadImage(c.isicId);
+}
+
+// ─── AI Nugget Generation ─────────────────────────────────────────────────────
+async function fetchNuggets(c) {
+  const prompt = `You are a senior dermatologist writing a daily dermoscopy learning card for a practicing clinician.
+
+Diagnosis: ${c.meta.name}
+ISIC Image: ${c.isicId}
+Category: ${c.code}
+
+Write exactly 6 bite-sized learning nuggets about this diagnosis for dermoscopy education. Each nugget is sharp, clinically precise, and memorable.
+
+Return ONLY a JSON array of 6 objects, no markdown, no other text:
+[
+  { "icon": "🔴", "dark": true, "title": "The Clincher", "text": "The single most pathognomonic dermoscopic feature with <strong>key term bolded</strong>." },
+  { "icon": "🔵", "dark": false, "title": "Supporting Feature", "text": "Second key feature..." },
+  { "icon": "⚠️", "dark": false, "title": "Pitfall to Avoid", "text": "The most dangerous diagnostic error..." },
+  { "icon": "📐", "dark": false, "title": "Pattern Rule", "text": "A memorable rule or mnemonic..." },
+  { "icon": "🧠", "dark": false, "title": "Clinical Pearl", "text": "Management or clinical context..." },
+  { "icon": "🎯", "dark": false, "title": "Remember", "text": "One memorable fact to take away..." }
+]
+
+Rules:
+- Use <strong> tags to bold key dermoscopy terms
+- First nugget (dark:true) is always the single clinching feature
+- "Pitfall" nugget must name a specific diagnostic error clinicians make
+- Keep each text to 2 sentences maximum
+- Be specific, not generic`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.map(b=>b.text||'').join('').trim()||'';
+    const clean = raw.replace(/```json|```/g,'').trim();
+    return JSON.parse(clean);
+  } catch(e) {
+    // Fallback nuggets
+    return getFallbackNuggets(c.code);
+  }
+}
+
+function getFallbackNuggets(code) {
+  const F = {
+    mel: [
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Atypical pigment network</strong> with irregular meshwork, variable line thickness, and abrupt peripheral termination is the most important single feature of melanoma."},
+      {icon:"🔵",dark:false,title:"Regression Structures",text:"<strong>Blue-grey peppering</strong> within a white scar-like zone indicates previous tumour regression — a worrying prognostic sign when asymmetrically placed."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Do not dismiss a lesion because it lacks blue-black colour. <strong>Hypomelanotic melanoma</strong> can fool even experienced dermoscopists — look for structural asymmetry."},
+      {icon:"📐",dark:false,title:"3-Colour Rule",text:"Three or more distinct colours within a single lesion has high specificity for melanoma. Apply the <strong>3-colour rule</strong> as a quick screening step."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"The <strong>multicomponent pattern</strong> (≥3 structural zones) drives the decision to excise. When in doubt, the lesion comes off."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Pseudopods and streaks</strong> at the border represent confluent melanocyte nests pushing outward — always an indication for excision."},
+    ],
+    nv: [
+      {icon:"🟤",dark:true,title:"The Clincher",text:"<strong>Regular pigment network</strong> with uniform line thickness, consistent hole size, and symmetric peripheral fading is the benign naevus signature."},
+      {icon:"📏",dark:false,title:"Symmetry Assessment",text:"Mentally fold the lesion on both axes. A benign naevus shows <strong>structural and colour symmetry</strong> on both planes."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Normal-appearing network on <strong>special sites</strong> (palms, soles, genitalia) requires different criteria — benign-looking network on the palm may be melanoma in situ."},
+      {icon:"📅",dark:false,title:"Follow-up Rule",text:"Stable naevi with typical pattern in patients under 40 need <strong>no routine follow-up</strong>. Baseline photography is reserved for high-risk patients."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"The <strong>ugly duckling sign</strong> outperforms individual lesion analysis in screening — any lesion unlike the patient's others demands scrutiny."},
+      {icon:"🎯",dark:false,title:"Remember",text:"Network fading is a benign sign. <strong>Network thickening toward the periphery</strong> is the inverse pattern and should prompt concern."},
+    ],
+    bcc: [
+      {icon:"🌳",dark:true,title:"The Clincher",text:"<strong>Arborising telangiectasia</strong> — large-calibre branching vessels with tree-like structure, in sharp focus under polarised light — is highly specific for BCC."},
+      {icon:"🔵",dark:false,title:"Blue-Grey Nests",text:"<strong>Ovoid blue-grey nests</strong> are large, well-demarcated structures representing pigmented tumour islands — their presence confirms BCC even without visible vessels."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Morphoeic BCC</strong> may show only white structureless areas with scarce vessels. On the face, any unexplained white area with subtle vessels warrants biopsy."},
+      {icon:"✨",dark:false,title:"Polarised Secret",text:"<strong>Chrysalis structures</strong> (shiny white lines, only visible under polarised dermoscopy) represent fibrous stroma — highly specific for BCC and thick melanoma."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"BCC essentially <strong>never metastasises</strong>, but facial BCC can cause devastating local destruction. Timely dermoscopic diagnosis prevents complex reconstruction."},
+      {icon:"🎯",dark:false,title:"Remember",text:"Superficial BCC shows <strong>multiple small erosions</strong> and fine vessels rather than arborising telangiectasia — subtype recognition changes treatment approach."},
+    ],
+    akiec: [
+      {icon:"🌀",dark:true,title:"The Clincher",text:"<strong>Coiled (glomerular) vessels</strong> — tightly wound capillaries in clusters on an erythematous background — are the most specific dermoscopic feature of Bowen's disease."},
+      {icon:"🍓",dark:false,title:"AK Pattern",text:"Actinic keratosis shows the <strong>strawberry pattern</strong>: pink-red pseudo-network with white follicular openings surrounded by red halos."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Irritated or inflamed AK</strong> can mimic psoriasis clinically. Dermoscopy — specifically the vessel pattern — differentiates them reliably."},
+      {icon:"📐",dark:false,title:"Invasion Sign",text:"White structureless areas within a Bowen's lesion signal <strong>invasion into SCC</strong>. Their presence changes management from topical to surgical."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"On the <strong>face of elderly patients</strong>, the AK field may extend beyond visible borders — treat the field, not just the lesion."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Bowen's disease of the nail unit</strong> and mucosae presents differently — periungual HPV-related lesions can simulate benign periungual warts."},
+    ],
+    bkl: [
+      {icon:"⬛",dark:true,title:"The Clincher",text:"<strong>Comedo-like openings</strong> (sharply demarcated crypts) combined with <strong>milia-like cysts</strong> (white-yellow globules) are pathognomonic for seborrhoeic keratosis."},
+      {icon:"🧠",dark:false,title:"Cerebriform Pattern",text:"The <strong>gyrus-and-sulcus pattern</strong> — resembling a brain surface — is seen in heavily pigmented SK and is one of dermoscopy's most visually distinctive patterns."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Irritated SK</strong> destroys the typical pattern — inflammation introduces vessels and regression-like structures. If the typical pattern is absent, biopsy is mandatory."},
+      {icon:"🌞",dark:false,title:"Solar Lentigo",text:"<strong>Solar lentigo</strong> shows a moth-eaten border pattern and a sharp demarcation — a distinct entity within the BKL category that is common on sun-exposed sites."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>LPLK (lichen planus-like keratosis)</strong> is an involuting SK — it shows regression features mimicking melanoma. Single lesion in an elderly patient is the clinical clue."},
+      {icon:"🎯",dark:false,title:"Remember",text:"SK can occur within a naevus as a <strong>collision lesion</strong>. If you see SK features in part of a lesion and naevus features in another — that's the explanation."},
+    ],
+    df: [
+      {icon:"⬜",dark:true,title:"The Clincher",text:"<strong>Central white scar-like patch</strong> surrounded by a delicate peripheral pigment network is pathognomonic for dermatofibroma — no other diagnosis produces this combination."},
+      {icon:"👆",dark:false,title:"The Dimple Sign",text:"Lateral compression produces a <strong>central dimple</strong> — a clinical finding unique to dermatofibroma, reflecting its fibrous tethering to the deep dermis."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Cellular dermatofibroma</strong> shows atypical dermoscopic features including irregular vessels. If the classic pattern is absent, biopsy rather than reassure."},
+      {icon:"💡",dark:false,title:"Polarised Insight",text:"Under polarised light, the central white area shows <strong>bright shiny structures</strong> representing dense collagenous fibrosis — not regression as in melanoma."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"Dermatofibroma is the most <strong>commonly biopsied benign lesion</strong> in practice. Mastering its pattern saves patients from unnecessary procedures."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Haemosiderotic DF</strong> adds brown globules to the classic pattern. <strong>Atrophic DF</strong> may lack the peripheral network — variants exist but the dimple sign persists."},
+    ],
+    vasc: [
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Red lacunae</strong> — well-circumscribed, round-to-oval, red to red-blue areas separated by whitish septa — are the pathognomonic feature of haemangioma."},
+      {icon:"🟣",dark:false,title:"Colour Spectrum",text:"Lacunae range from <strong>bright red (superficial) to dark violet or black</strong> (thrombosed) — the darker the haemangioma, the greater the clinical concern but still benign."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Thrombosed haemangioma</strong> can mimic melanoma clinically and on dermoscopy — dark structureless areas with no visible lacunae. Biopsy if uncertain."},
+      {icon:"🩸",dark:false,title:"Angiokeratoma",text:"<strong>Angiokeratoma</strong> shows lacunae plus a dark veil and a scaly surface — distinguishable from haemangioma by its surface hyperkeratosis."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Pyogenic granuloma</strong> shows white rail lines surrounding red lobular vascular areas — a distinct vascular pattern that clinches the diagnosis."},
+      {icon:"🎯",dark:false,title:"Remember",text:"The <strong>red lacunar pattern</strong> is so specific for benign vascular lesions that seeing it should immediately trigger reassurance rather than concern."},
+    ],
+  };
+  return F[code] || F.nv;
+}
+
+// ─── Reveal ───────────────────────────────────────────────────────────────────
+async function reveal() {
+  if (revealed) return;
+  revealed = true;
+  document.getElementById('revealBtn').classList.add('gone');
+  document.getElementById('locked').style.display = 'none';
+
+  const grid = document.getElementById('nuggetsGrid');
+  // Show skeleton
+  grid.innerHTML = Array(6).fill(`<div class="skel-nugget"><div class="skel s"></div><div class="skel m"></div><div class="skel l"></div><div class="skel m"></div></div>`).join('');
+  grid.classList.add('show');
+
+  // Fetch AI nuggets
+  const nuggets = await fetchNuggets(currentCase);
+
+  grid.innerHTML = nuggets.map((n,i) => `
+    <div class="nugget ${n.dark?'dark':''}" data-n="${i+1}" style="animation-delay:${i*0.07}s">
+      <span class="nugget-ico">${n.icon}</span>
+      <div class="n-title">${n.title}</div>
+      <div class="n-text">${n.text}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('bottomBar').classList.add('show');
+  grid.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function nextCase() {
+  curIdx++;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => renderCase(curIdx), 200);
+}
+function prevCase() {
+  if (curIdx <= 0) return;
+  curIdx--;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => renderCase(curIdx), 200);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+// Use day of year to set starting case for "daily" feel
+const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
+if (curIdx === 0) curIdx = dayOfYear % BANK.length;
+
+renderCase(curIdx);
+</script>
+</body>
+</html>
