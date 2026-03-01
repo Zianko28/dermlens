@@ -336,21 +336,24 @@ const HX_MEL = ["Growing, colour change","Recent darkening","Itching and change"
 const HX_BENIGN = ["Stable, unchanged","Longstanding, asymptomatic","Patient concerned","Occasional itch","Stable for years","Routine check"];
 
 // ─── State ────────────────────────────────────────────────────────────────────
-let curIdx = 0;
 let revealed = false;
 let currentImgSrc = '';
 let currentCase = null;
+
+// Daily index — advances by 1 every calendar day, always resets to today on open
+const _today = new Date().toDateString();
+const _epoch = new Date('2024-01-01');
+const _daysSinceEpoch = Math.floor((new Date() - _epoch) / 86400000);
+let curIdx = _daysSinceEpoch % BANK.length;
 
 // Streak
 let streak = 1;
 try {
   const sv = parseInt(localStorage.getItem('dl3_s')||'1');
   const last = localStorage.getItem('dl3_l');
-  const today = new Date().toDateString();
-  streak = (last && last !== today) ? (last===new Date(Date.now()-86400000).toDateString() ? sv+1 : 1) : sv;
+  streak = (last && last !== _today) ? (last===new Date(Date.now()-86400000).toDateString() ? sv+1 : 1) : sv;
   localStorage.setItem('dl3_s', streak);
-  localStorage.setItem('dl3_l', today);
-  curIdx = parseInt(localStorage.getItem('dl3_idx')||'0');
+  localStorage.setItem('dl3_l', _today);
 } catch(e){}
 
 document.getElementById('streakN').textContent = streak;
@@ -451,7 +454,7 @@ function renderCase(idx) {
   currentCase = c;
 
   // Save position
-  try { localStorage.setItem('dl3_idx', idx); } catch(e){}
+  try { localStorage.setItem('dl3_idx_unused', idx); } catch(e){}
 
   // Counter
   document.getElementById('caseNum').textContent = (idx % BANK.length) + 1;
@@ -635,10 +638,7 @@ function prevCase() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-// Use day of year to set starting case for "daily" feel
-const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(),0,0)) / 86400000);
-if (curIdx === 0) curIdx = dayOfYear % BANK.length;
-
+// curIdx is already set to today's date-based case above — just render it
 renderCase(curIdx);
 </script>
 </body>
