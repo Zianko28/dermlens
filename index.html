@@ -488,129 +488,291 @@ function renderCase(idx) {
   loadImage(c.isicId);
 }
 
-// ─── AI Nugget Generation ─────────────────────────────────────────────────────
-async function fetchNuggets(c) {
-  const prompt = `You are a senior dermatologist writing a daily dermoscopy learning card for a practicing clinician.
+// ─── NUGGET BANK — 5 unique sets per diagnosis, selected by case index ────────
+const NUGGETS = {
+  mel: [
+    [ // set 0
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Atypical pigment network</strong> — irregular meshwork with variable line thickness and abrupt border termination — is melanoma's single most important dermoscopic feature."},
+      {icon:"🔵",dark:false,title:"Regression Structures",text:"<strong>Blue-grey peppering</strong> within a white scar-like area indicates tumour regression — asymmetric placement makes this a red flag, not a reassuring sign."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Never dismiss a lesion for lacking blue-black colour. <strong>Hypomelanotic melanoma</strong> fools experienced dermoscopists — focus on structural asymmetry, not colour alone."},
+      {icon:"📐",dark:false,title:"3-Colour Rule",text:"Three or more distinct colours within one lesion has high specificity for melanoma. Apply the <strong>3-colour rule</strong> as your first screening step before pattern analysis."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"The <strong>multicomponent pattern</strong> (≥3 distinct structural zones) is your single strongest indication to excise — when it's present, the decision is already made."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Pseudopods and streaks</strong> at the lesion border represent confluent nests of melanocytes pushing outward — their presence always warrants excision."},
+    ],[ // set 1
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Irregular streaks</strong> — radial projections at the periphery that are asymmetrically distributed — are a high-specificity feature of melanoma, particularly superficial spreading type."},
+      {icon:"🌑",dark:false,title:"Blue-Black Rule",text:"Any lesion with a <strong>blue-black area</strong> should be excised without further analysis — this single criterion has ~100% sensitivity for melanoma requiring surgery."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Reed naevus and Spitz naevus both show streaks — but their streaks are <strong>symmetric and circumferential</strong>, unlike the asymmetric streaks of melanoma."},
+      {icon:"📐",dark:false,title:"ABCD Rule",text:"Dermoscopic <strong>ABCD scoring</strong>: asymmetry (0-2), border (0-8), colour (0-6), differential structures (0-10). A total score >5.45 has high sensitivity for melanoma."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Nodular melanoma</strong> is the great killer — it grows fast, often lacks typical network features, and may appear as a featureless blue-black nodule. Thickness drives prognosis."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Amelanotic melanoma</strong> may show only milky-red areas and atypical vessels — the absence of pigment does not exclude melanoma in a changing lesion."},
+    ],[ // set 2
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Dotted and irregular vessels</strong> within a structureless milky-red zone are the vascular signature of invasive melanoma — particularly in thicker lesions."},
+      {icon:"🔵",dark:false,title:"Blotch Pattern",text:"An <strong>irregular dark blotch</strong> — structureless, off-centre, with abrupt borders — represents focal melanin accumulation and is a worrying melanoma criterion."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Do not confuse a <strong>central hyperpigmented blotch in a naevus</strong> with melanoma — naevus blotches are central and round; melanoma blotches are eccentric and irregular."},
+      {icon:"📐",dark:false,title:"7-Point Checklist",text:"The <strong>7-point checklist</strong> (Argenziano): atypical network, blue-white veil, atypical vascular pattern, irregular streaks, irregular dots, irregular blotch, regression — score ≥3 = excise."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Lentigo maligna</strong> on the face requires different criteria — look for asymmetric follicular pigmentation, dark rhomboidal structures, and grey circles rather than network."},
+      {icon:"🎯",dark:false,title:"Remember",text:"The <strong>blue-white veil</strong> — a blue diffuse pigmentation overlying raised areas — represents orthokeratosis over nests of pigmented melanocytes and is highly specific for melanoma."},
+    ],[ // set 3
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Asymmetry of colour and structure</strong> on both axes is the overarching melanoma criterion — train your first glance to assess this before looking at individual features."},
+      {icon:"🟤",dark:false,title:"Chaos and Clues",text:"The <strong>chaos and clues algorithm</strong>: if a lesion is chaotic (asymmetric, irregular) plus has any specific clue (e.g. grey structures, atypical network), excise without hesitation."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Combined naevi</strong> (naevus plus SK, or naevus plus DF) can appear multicomponent — careful identification of two separate lesion patterns prevents unnecessary excision."},
+      {icon:"📐",dark:false,title:"Pattern Analysis",text:"<strong>Global pattern analysis</strong> asks: reticular, globular, homogeneous, starburst, or multicomponent? Multicomponent is the only pattern with no benign differential."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Acral melanoma</strong> is identified by the parallel ridge pattern — pigment running along the ridges (not the furrows) of palmar/plantar skin is melanoma until proven otherwise."},
+      {icon:"🎯",dark:false,title:"Remember",text:"Dermoscopy improves melanoma detection by <strong>49% over naked eye</strong> alone — but only when you use a systematic, reproducible approach every single time."},
+    ],[ // set 4
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Irregular dots and globules</strong> — varying in size, colour, and distribution, particularly at the periphery — indicate irregular melanocyte proliferation and favour melanoma."},
+      {icon:"🔵",dark:false,title:"Shiny White Structures",text:"<strong>Shiny white streaks/lines</strong> (chrysalis) under polarised light in a melanocytic lesion suggest desmoplasia — seen in desmoplastic melanoma and thick invasive tumours."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Dysplastic naevus</strong> may show atypical network and irregular pigmentation mimicking melanoma — when in doubt excise, as dermoscopy cannot reliably exclude melanoma here."},
+      {icon:"📐",dark:false,title:"Menzies Method",text:"The <strong>Menzies method</strong> requires absence of both symmetry of pattern and single colour, plus presence of ≥1 of 9 positive features (e.g. blue-white veil, multiple colours)."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Subungual melanoma</strong> presents as melanonychia striata — a broad (>3mm), irregular, or rapidly widening band of nail pigment with Hutchinson's sign (periungual pigmentation)."},
+      {icon:"🎯",dark:false,title:"Remember",text:"The <strong>ugly duckling sign</strong> — a lesion that looks different from all the patient's other naevi — outperforms individual feature analysis as a first-pass screening tool."},
+    ],
+  ],
+  nv: [
+    [ // set 0
+      {icon:"🟤",dark:true,title:"The Clincher",text:"<strong>Regular pigment network</strong> — uniform line thickness, consistent hole size, symmetric peripheral fading — is the classic benign naevus signature you should recognise instantly."},
+      {icon:"📏",dark:false,title:"Symmetry First",text:"Mentally fold the lesion on both axes. A benign naevus shows <strong>structural and colour symmetry</strong> on both planes — asymmetry on either axis demands explanation."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Network on <strong>special sites</strong> (palms, soles, genitalia, face) requires different criteria — a benign-looking palmar network may be melanoma in situ following the furrow pattern."},
+      {icon:"📅",dark:false,title:"Follow-up Rule",text:"Stable naevi with typical pattern in patients under 40 need <strong>no routine follow-up</strong>. Reserve baseline photography for patients with >50 naevi or personal/family melanoma history."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"The <strong>ugly duckling sign</strong> outperforms individual lesion analysis — any naevus that looks different from the patient's others, regardless of individual features, deserves scrutiny."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Network fading at the periphery</strong> is a reassuring benign sign. Network thickening or abrupt termination toward the periphery is the inverse — and should prompt concern."},
+    ],[ // set 1
+      {icon:"🟤",dark:true,title:"The Clincher",text:"<strong>Globular pattern</strong> — regular brown globules of uniform size evenly distributed throughout — is the classic pattern of a compound or intradermal naevus, strongly benign."},
+      {icon:"🔵",dark:false,title:"Reticular vs Globular",text:"Reticular naevi predominate on the trunk; globular naevi are commoner on the face and scalp. <strong>Mixed patterns</strong> (part reticular, part globular) are normal and benign."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"A <strong>target naevus</strong> — central globules with peripheral network — is normal and benign on the trunk. Misidentifying this as multicomponent leads to unnecessary excision."},
+      {icon:"📐",dark:false,title:"Age Rule",text:"Naevi in children under 12 often show an <strong>entirely globular pattern</strong> — this is normal development and should not trigger concern unless the lesion is rapidly enlarging."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Blue naevus</strong> shows homogeneous steel-blue pigmentation without network — a specific benign pattern representing deep dermal melanocytes, not regression."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Congenital naevi</strong> may show a distinctive pattern of perifollicular hypopigmentation and a cobblestone or pebbled surface — don't mistake complexity for malignancy."},
+    ],[ // set 2
+      {icon:"🟤",dark:true,title:"The Clincher",text:"<strong>Homogeneous brown pattern</strong> — uniform light-to-medium brown pigmentation without any network, globules, or structures — is a benign pattern most common in intradermal naevi."},
+      {icon:"🩷",dark:false,title:"Skin-Coloured Naevus",text:"Raised intradermal naevi may appear nearly <strong>skin-coloured with comma-shaped vessels</strong> — these curved vessels on a pinkish background are a reassuring benign vascular pattern."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Recurrent naevus</strong> after shave biopsy shows irregular pigmentation within a scar — this pseudo-melanoma pattern is benign but requires knowledge of the surgical history."},
+      {icon:"📐",dark:false,title:"Halo Naevus",text:"A <strong>halo naevus</strong> shows a central typical naevus surrounded by a white depigmented ring — this is an immune-mediated involution, benign, but warrants full skin check for melanoma."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Meyerson naevus</strong> — a naevus with surrounding eczematous halo — appears inflamed and concerning clinically, but dermoscopy shows a typical naevus within a scaly surround."},
+      {icon:"🎯",dark:false,title:"Remember",text:"A <strong>Spitz naevus</strong> in a child shows a starburst pattern (symmetric streaks all around) — this is benign in young patients but the same pattern in adults warrants excision."},
+    ],[ // set 3
+      {icon:"🟤",dark:true,title:"The Clincher",text:"The <strong>starburst pattern</strong> — symmetric streaks or pseudopods distributed evenly around the entire circumference — is the classic signature of a Spitz or Reed naevus, benign in children."},
+      {icon:"🔵",dark:false,title:"Reed Naevus",text:"<strong>Reed naevus</strong> (pigmented spindle cell naevus) shows a dense starburst pattern with dark brown to black pigmentation — it's the most common starburst lesion in young adults."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Starburst pattern in a patient <strong>over 40</strong> cannot be safely attributed to Spitz/Reed naevus — melanoma produces asymmetric streaks and must be excluded by excision."},
+      {icon:"📐",dark:false,title:"Symmetry is Key",text:"The single feature distinguishing benign starburst (Spitz/Reed) from melanoma is <strong>symmetry of streaks</strong> — if any streaks are asymmetrically placed, excise."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Spitzoid melanoma</strong> exists — if a starburst lesion is >1cm, ulcerated, or in a patient over 40, it must be excised regardless of how symmetric the streaks appear."},
+      {icon:"🎯",dark:false,title:"Remember",text:"A <strong>negative pigment network</strong> — light lines forming a network against a darker background — is a specific pattern of Spitz naevus and represents collagen between melanocyte nests."},
+    ],[ // set 4
+      {icon:"🟤",dark:true,title:"The Clincher",text:"<strong>Parallel furrow pattern</strong> on acral skin — pigment confined to the furrows (skin creases), not the ridges — is the hallmark of a benign acral naevus."},
+      {icon:"🖐️",dark:false,title:"Acral Anatomy",text:"On palms and soles, skin ridges contain the sweat gland openings. <strong>Benign pigment follows the furrows</strong>; melanoma pigment follows the ridges — this distinction is life-saving."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Fibrillar pattern</strong> (diagonal streaks crossing ridges and furrows) on the heel is benign — caused by pressure-related pigment redistribution. Don't confuse with parallel ridge."},
+      {icon:"📐",dark:false,title:"Parallel Ridge Rule",text:"The <strong>parallel ridge pattern</strong> (pigment on ridges) has 86% sensitivity and 99% specificity for acral melanoma — if you see it, excise without hesitation."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Ethnic skin</strong> frequently shows acral pigmentation — in darker skin types, the parallel furrow pattern is the normal variant and should not prompt concern without change."},
+      {icon:"🎯",dark:false,title:"Remember",text:"The <strong>lattice-like pattern</strong> on acral skin — a grid of pigmentation at furrow intersections — is another benign acral naevus variant and should not be confused with ridge pattern."},
+    ],
+  ],
+  bcc: [
+    [ // set 0
+      {icon:"🌳",dark:true,title:"The Clincher",text:"<strong>Arborising telangiectasia</strong> — large-calibre vessels branching like trees with sharp focus under polarised light — is the most specific single feature of nodular BCC."},
+      {icon:"🔵",dark:false,title:"Blue-Grey Nests",text:"<strong>Ovoid blue-grey nests</strong> are large, well-demarcated oval structures representing pigmented tumour islands — they confirm BCC even in the absence of visible vessels."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Morphoeic (sclerosing) BCC</strong> shows only white structureless areas with fine vessels — it lacks classic arborising vessels and is frequently biopsied late due to its scar-like appearance."},
+      {icon:"✨",dark:false,title:"Polarised Secret",text:"<strong>Chrysalis structures</strong> — shiny white lines visible only under polarised light — represent fibrous tumour stroma and are highly specific for BCC and desmoplastic melanoma."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"BCC essentially <strong>never metastasises</strong>, but periocular, nasal, and auricular BCC cause devastating local destruction — early dermoscopic diagnosis prevents complex surgical reconstruction."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Superficial BCC</strong> shows multiple small erosions and fine short vessels in a spoke-wheel arrangement — this subtype is treated topically, so accurate subtype diagnosis changes management."},
+    ],[ // set 1
+      {icon:"🌳",dark:true,title:"The Clincher",text:"<strong>Spoke-wheel structures</strong> — pigmented radial projections meeting at a darker central point — are pathognomonic for pigmented superficial BCC and are not seen in melanoma."},
+      {icon:"🔵",dark:false,title:"Leaf-like Areas",text:"<strong>Leaf-like (maple leaf-like) structures</strong> are discrete brown-to-grey pigmented bulbous projections that do not form a network — pathognomonic for superficial or flat BCC."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Pigmented BCC can be confused with melanoma — but BCC shows <strong>no pigment network</strong>, while melanoma nearly always has network or pseudonetwork as part of its pattern."},
+      {icon:"📐",dark:false,title:"Vessel Focus",text:"BCC vessels are <strong>in sharp focus</strong> because they are superficial. Vessels that blur at the edges suggest a different diagnosis — vessel clarity is a quick BCC check."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Superficial BCC</strong> on the trunk is the most common BCC subtype in younger patients — it appears as a slightly scaly pink patch and is easily mistaken for eczema or psoriasis."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Multiple BCCs</strong> in a young patient should trigger consideration of Gorlin syndrome (PTCH1 mutation) — jaw cysts, calcified falx, and palmar pits are the classic triad."},
+    ],[ // set 2
+      {icon:"🌳",dark:true,title:"The Clincher",text:"<strong>Large blue-grey ovoid nests</strong> combined with arborising vessels in a non-pigmented lesion on the face is the definitive dermoscopic signature of nodular BCC — biopsy confirms subtype."},
+      {icon:"🔵",dark:false,title:"Ulceration",text:"<strong>Ulceration or erosion</strong> — particularly in a slowly growing, non-healing lesion on the face of an elderly patient — is one of the earliest clinical clues that precedes dermoscopic diagnosis."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Intradermal naevus on the face can show <strong>comma-shaped vessels</strong> mimicking early BCC vessels — but naevus vessels are thin, curved, and evenly distributed, not arborising."},
+      {icon:"📐",dark:false,title:"BCC Subtype Matters",text:"<strong>Nodular BCC</strong> → surgery. <strong>Superficial BCC</strong> → topical (imiquimod/PDT). <strong>Morphoeic BCC</strong> → Mohs. Dermoscopic subtype recognition directly changes treatment pathway."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Pigmented BCC</strong> is more common in darker skin phototypes — in Asian and Middle Eastern patients, expect more pigmented BCC variants with less prominent vessels."},
+      {icon:"🎯",dark:false,title:"Remember",text:"The <strong>H-zone</strong> (nose, nasolabial folds, medial canthus, philtrum) is high-risk for aggressive BCC due to embryonic fusion planes — all H-zone BCCs should be discussed with Mohs surgery."},
+    ],[ // set 3
+      {icon:"🌳",dark:true,title:"The Clincher",text:"<strong>Multiple small erosions</strong> on a pink, slightly scaly background — without network, globules, or arborising vessels — is the classic superficial BCC pattern on the trunk."},
+      {icon:"🔵",dark:false,title:"Shiny White Blotches",text:"<strong>Shiny white to red structureless areas</strong> are the non-pigmented equivalent of blue-grey ovoid nests — they represent tumour islands and are seen in non-pigmented nodular BCC."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Eczema and psoriasis</strong> on the trunk can perfectly mimic superficial BCC clinically. Dermoscopy of eczema shows dotted vessels on a yellow background — not erosions on pink."},
+      {icon:"📐",dark:false,title:"Arborising vs Dotted",text:"<strong>Arborising = BCC. Dotted = SCC/AK/naevus. Glomerular = Bowen's. Comma = naevus.</strong> Vessel morphology alone frequently points to the correct diagnosis."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Radiation-induced BCC</strong> arises years after radiotherapy — the skin shows radiation changes (telangiectasia, dyspigmentation) making dermoscopy more difficult. Have a low biopsy threshold."},
+      {icon:"🎯",dark:false,title:"Remember",text:"BCC is the <strong>most common human malignancy</strong> — one in three Australians and one in five Europeans will develop one in their lifetime. Dermoscopy is your most powerful early detection tool."},
+    ],[ // set 4
+      {icon:"🌳",dark:true,title:"The Clincher",text:"<strong>Concentric structures (targetoid nests)</strong> — circles within circles of blue-grey pigmentation — are a specific BCC feature representing pigmented tumour nests at different depths."},
+      {icon:"🔵",dark:false,title:"In-Focus Vessels",text:"The key dermoscopic trick: <strong>focus the dermoscope on vessels</strong> in a facial lesion. BCC vessels snap into sharp, bright red focus — whereas other vessels blur. Train this reflex."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Sebaceous hyperplasia</strong> on the face shows a central dell with surrounding crown vessels — these curved peripheral vessels are commonly mistaken for BCC arborising telangiectasia."},
+      {icon:"📐",dark:false,title:"Flat Pigmented BCC",text:"Flat pigmented BCC on the face may show <strong>only leaf-like areas and spoke-wheels</strong> without vessels — do not require vessel identification for BCC diagnosis."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Fibroepithelioma of Pinkus</strong> (FEP) is a rare BCC variant appearing as a skin-coloured pedunculated nodule on the lower back — it shows a distinctive string-of-pearls vessel pattern."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Recurrent BCC</strong> after incomplete excision often lacks classic features due to scarring — treat any non-healing lesion within a scar as BCC until proven otherwise."},
+    ],
+  ],
+  akiec: [
+    [ // set 0
+      {icon:"🌀",dark:true,title:"The Clincher",text:"<strong>Coiled (glomerular) vessels</strong> — tightly wound capillary loops in clusters on an erythematous background — are the most specific dermoscopic feature of Bowen's disease (SCC in situ)."},
+      {icon:"🍓",dark:false,title:"Strawberry Pattern",text:"Actinic keratosis shows the <strong>strawberry pattern</strong>: a pink-red pseudo-network with white follicular openings surrounded by red halos on sun-damaged facial skin."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Irritated AK</strong> can clinically mimic psoriasis, eczema, or Bowen's. Dermoscopy with vessel assessment reliably separates them — dotted vessels on yellow scale favours AK."},
+      {icon:"📐",dark:false,title:"Invasion Alert",text:"<strong>White structureless areas</strong> within a Bowen's lesion signal dermal invasion (SCC). Their presence changes management from topical treatment to surgical excision."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"On sun-damaged faces, <strong>AK field cancerisation</strong> extends beyond visible lesion borders — treat the entire field with daylight PDT or 5-FU cream, not just individual spots."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Bowen's of the nail unit</strong> is frequently mistaken for periungual wart, onychomycosis, or chronic paronychia — HPV-related periungual SCC has a distinct dermoscopic signature."},
+    ],[ // set 1
+      {icon:"🌀",dark:true,title:"The Clincher",text:"<strong>Rosettes</strong> — four-dot clover-like structures visible under polarised light — are a specific finding in AK and early SCC, representing hyperkeratotic follicular plugs."},
+      {icon:"🔵",dark:false,title:"Surface Scale",text:"<strong>White to yellow surface scale</strong> on a pink-red background is the most common dermoscopic finding in AK — the scale represents abnormal keratinisation over atypical keratinocytes."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Pigmented AK</strong> occurs in darker skin types and may show brown structureless areas mimicking flat seborrhoeic keratosis or lentigo maligna — biopsy is often required."},
+      {icon:"📐",dark:false,title:"AK Grading",text:"Grade I AK shows <strong>erythema and scale only</strong>. Grade II adds vessel visibility. Grade III shows Bowen's-like features. Grading guides treatment intensity and follow-up frequency."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Hypertrophic AK</strong> shows thick hyperkeratosis obscuring dermoscopic features — always soak or debride scale before dermoscopy, or use ultrasound gel to improve image clarity."},
+      {icon:"🎯",dark:false,title:"Remember",text:"AK-to-SCC progression rate is approximately <strong>0.1–0.5% per lesion per year</strong> — but field cancerisation means the risk is cumulative across many lesions in one area."},
+    ],[ // set 2
+      {icon:"🌀",dark:true,title:"The Clincher",text:"<strong>Hairpin vessels</strong> — looped vessels with a parallel double-line structure — are the classic dermoscopic marker of keratoacanthoma and well-differentiated invasive SCC."},
+      {icon:"🔵",dark:false,title:"Central Keratin",text:"<strong>Central white-yellow structureless area</strong> representing keratin plug is characteristic of keratoacanthoma — the surrounding hairpin vessels encircle this central core."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Keratoacanthoma vs invasive SCC</strong> cannot be reliably distinguished by dermoscopy alone — both require histopathological examination of the entire excised specimen."},
+      {icon:"📐",dark:false,title:"SCC Vessel Hierarchy",text:"Vessel evolution in SCC: <strong>dotted → glomerular → hairpin → irregular</strong>. As SCC invades deeper, vessels become more irregular — vessel morphology approximates invasion depth."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Mucosal SCC</strong> (lip, oral, genital) requires different criteria — look for irregular white areas (leukoplakia equivalent) and irregular vessels rather than keratotic features."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Marjolin's ulcer</strong> — SCC arising in a chronic wound, burn scar, or sinus tract — presents as an ulcerated lesion without typical dermoscopic features. Biopsy any non-healing wound."},
+    ],[ // set 3
+      {icon:"🌀",dark:true,title:"The Clincher",text:"<strong>Targetoid hair follicles</strong> — follicular openings with surrounding concentric rings of scale and pigmentation on the face — are the pathognomonic feature of follicular AK on facial skin."},
+      {icon:"🔵",dark:false,title:"Pigmented Bowen's",text:"<strong>Pigmented Bowen's disease</strong> shows glomerular vessels on a brown background — easily confused with melanoma, but the vessel pattern and HPV association (especially on digits) are clues."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Flat wart (verruca plana)</strong> can look identical to AK clinically on the dorsal hand — dermoscopy of wart shows a regular dotted vessel pattern within a mosaic surface architecture."},
+      {icon:"📐",dark:false,title:"Photodamage Map",text:"AK is a <strong>marker of field cancerisation</strong> — its presence on one area of sun-exposed skin means the entire field is at risk. Always examine and document the whole at-risk zone."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Immunosuppressed patients</strong> (transplant recipients, haematological malignancy) have dramatically accelerated AK-to-SCC progression — they require 3-6 monthly surveillance dermoscopy."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Daylight PDT</strong> (photodynamic therapy) treats the entire field simultaneously and is as effective as conventional PDT for AK — it's better tolerated and preferred by patients."},
+    ],[ // set 4
+      {icon:"🌀",dark:true,title:"The Clincher",text:"<strong>White circles</strong> around follicular openings on the face — the 'fried egg' pattern — are highly specific for facial AK and represent the perifollicular acantholysis of sun damage."},
+      {icon:"🔵",dark:false,title:"Erythroplasia of Queyrat",text:"<strong>Erythroplasia of Queyrat</strong> is Bowen's disease of the glans penis — it shows glomerular vessels on a red background and has a higher malignant transformation rate than cutaneous Bowen's."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Clear cell acanthoma</strong> shows a distinctive string-of-pearls dotted vessel pattern on a red background — it mimics Bowen's disease but is entirely benign."},
+      {icon:"📐",dark:false,title:"Treatment Response",text:"After topical treatment (5-FU, imiquimod, ingenol), <strong>follow-up dermoscopy</strong> at 3 months should show resolution of vessels and scale — persistence warrants re-biopsy."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Lips are a high-risk site</strong> for AK (actinic cheilitis) and SCC — the lower lip is exposed to cumulative UV. Any non-healing lip erosion or induration warrants biopsy."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>SCC metastasises</strong> in approximately 5% of cases — much more frequently from mucosal, ear, and lip sites than from trunk or limb primaries. Site matters for prognosis."},
+    ],
+  ],
+  bkl: [
+    [ // set 0
+      {icon:"⬛",dark:true,title:"The Clincher",text:"<strong>Comedo-like openings</strong> (sharply demarcated dark crypts) combined with <strong>milia-like cysts</strong> (white-yellow globules) are pathognomonic for seborrhoeic keratosis."},
+      {icon:"🧠",dark:false,title:"Cerebriform Pattern",text:"The <strong>gyrus-and-sulcus pattern</strong> — resembling the surface of a brain — is seen in heavily pigmented SK and is one of dermoscopy's most visually distinctive benign patterns."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Irritated SK</strong> loses its typical pattern — inflammation introduces vessels and regression-like white areas. Without the classic pattern, biopsy is mandatory to exclude melanoma."},
+      {icon:"🌞",dark:false,title:"Solar Lentigo",text:"<strong>Solar lentigo</strong> shows a moth-eaten border (fingerprint-like scalloping) and uniform tan pigmentation — a distinct entity within the BKL category on sun-exposed skin."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>LPLK (lichen planus-like keratosis)</strong> is an involuting SK that develops regression features — it is the most common benign lesion mistaken for melanoma and sent for biopsy."},
+      {icon:"🎯",dark:false,title:"Remember",text:"SK can coexist with a naevus as a <strong>collision lesion</strong> — if you see SK features in one zone and naevus features in another, the lesion is a collision, not multicomponent melanoma."},
+    ],[ // set 1
+      {icon:"⬛",dark:true,title:"The Clincher",text:"<strong>Fingerprint pattern</strong> — thin parallel brown lines forming a pattern like a fingerprint — is the classic dermoscopic appearance of a flat solar lentigo or early seborrhoeic keratosis."},
+      {icon:"🔵",dark:false,title:"Fissures and Ridges",text:"<strong>Fissures and ridges</strong> — a pattern of alternating light and dark parallel lines mimicking a brain sulcus — represent the convoluted surface of a raised SK."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Melanoma in situ on the face</strong> (lentigo maligna) occurs in the same demographic and sun-exposed sites as solar lentigo — both show follicular patterns, making differentiation challenging."},
+      {icon:"📐",dark:false,title:"Lentigo vs LM",text:"Solar lentigo shows <strong>moth-eaten borders and fingerprint pattern</strong>. Lentigo maligna shows asymmetric follicular pigmentation, dark rhomboidal structures, and grey circles. Pattern asymmetry is key."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"The <strong>Sign of Leser-Trélat</strong> — sudden eruption of multiple SKs — is a paraneoplastic marker associated with internal malignancy (especially GI adenocarcinoma). Investigate if rapidly evolving."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Dermatosis papulosa nigra</strong> — multiple small SKs on the face in darker skin types — is entirely benign and extremely common. Dermoscopy confirms the comedo opening pattern."},
+    ],[ // set 2
+      {icon:"⬛",dark:true,title:"The Clincher",text:"<strong>Stuck-on appearance</strong> with a sharp, well-defined border — as if the lesion could be lifted off with a fingernail — is the clinical correlate of the dermoscopic SK pattern."},
+      {icon:"🔵",dark:false,title:"Multiple Milia Cysts",text:"<strong>Multiple milia-like cysts</strong> scattered throughout a pigmented lesion on the trunk are the strongest single dermoscopic predictor of SK, with very high specificity."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Pigmented SK on the face</strong> in elderly patients can simulate lentigo maligna, pigmented BCC, or melanoma — always look for crypts or cysts before diagnosing by clinical appearance alone."},
+      {icon:"📐",dark:false,title:"Seborrhoeic Scale",text:"<strong>Surface scale with a dull, waxy appearance</strong> — rather than silvery or greasy scale — is the macroscopic correlate of the hyperkeratosis visible as comedo openings on dermoscopy."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Clonal SK</strong> contains a nest of darker cells within the body of a typical SK — dermoscopy shows a darker clonal zone. This is a benign variant, not a collision with melanoma."},
+      {icon:"🎯",dark:false,title:"Remember",text:"SK is entirely benign and requires <strong>no treatment</strong> unless for cosmetic reasons or recurrent irritation. Cryotherapy, curettage, and laser are all effective — dermoscopy guides selection."},
+    ],[ // set 3
+      {icon:"⬛",dark:true,title:"The Clincher",text:"<strong>Sharp demarcation</strong> — an abrupt border between the lesion and surrounding normal skin — combined with a pasted-on texture is the gestalt of SK that allows rapid pattern recognition."},
+      {icon:"🔵",dark:false,title:"Flat SK Pattern",text:"Flat SKs show a <strong>jelly sign</strong> — applying pressure reveals translucency and a waxy surface — helping distinguish them from flat melanocytic lesions on clinical examination."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Genital SK</strong> (on the vulva or scrotum) can be confused with condyloma acuminatum or melanoma — dermoscopy shows the classic comedo openings and rules out the alternatives."},
+      {icon:"📐",dark:false,title:"Light Brown Fingerprint",text:"Very early SKs and solar lentigines show a <strong>light fingerprint pattern</strong> with subtle parallel lines — this is not a network and should not trigger concern for melanocytic origin."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Stucco keratosis</strong> — multiple small white-grey keratotic papules on the feet and lower legs — is a distinct entity often confused with warts. Dermoscopy shows a cerebriform surface."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Inflamed LPLK</strong> is the most common 'benign lesion' sent for excision as 'melanoma' — it shows regression features (grey peppering, white scar) because the immune system is attacking it."},
+    ],[ // set 4
+      {icon:"⬛",dark:true,title:"The Clincher",text:"<strong>Moth-eaten border</strong> — scalloped, concave indentations along the lesion edge — is pathognomonic for solar lentigo and distinguishes it from the irregular border of melanoma."},
+      {icon:"🔵",dark:false,title:"Ink-spot Lentigo",text:"<strong>Ink-spot lentigo</strong> (reticulated black lentigo) shows a dark, irregular-looking pigmentation that alarms clinicians — but dermoscopy reveals a network without melanoma criteria."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Café-au-lait macule</strong> shows a very subtle reticular pigmentation and may be confused with flat lentigo or melanoma in situ — it lacks the moth-eaten border of lentigo."},
+      {icon:"📐",dark:false,title:"Lentigo Simplex",text:"<strong>Lentigo simplex</strong> (non-solar lentigo) appears in childhood or adolescence anywhere on the skin — dermoscopy shows a regular, thin reticular network without solar lentigo features."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Peutz-Jeghers syndrome</strong> — multiple lentigines on the lips and oral mucosa — is associated with GI hamartomatous polyps and GI malignancy. Recognition of the mucosal lentigo pattern is critical."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>LEOPARD syndrome</strong> (multiple lentigines, ECG abnormalities, pulmonary stenosis, abnormal genitalia, retardation, deafness) — lentigines here are clinically identical to lentigo simplex."},
+    ],
+  ],
+  df: [
+    [ // set 0
+      {icon:"⬜",dark:true,title:"The Clincher",text:"<strong>Central white scar-like patch</strong> surrounded by a delicate peripheral pigment network is pathognomonic for dermatofibroma — no other diagnosis reliably produces this exact combination."},
+      {icon:"👆",dark:false,title:"The Dimple Sign",text:"Lateral compression of a dermatofibroma produces a <strong>central dimple (Fitzpatrick's sign)</strong> — fibrous tethering of the lesion to the dermis is what creates this unique clinical finding."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Cellular dermatofibroma</strong> has atypical dermoscopic features including irregular vessels and may lack the classic pattern — biopsy is required if the typical pattern is not present."},
+      {icon:"💡",dark:false,title:"Polarised Insight",text:"The central white area shows <strong>bright shiny structures (chrysalis)</strong> under polarised light — representing dense collagenous fibrosis, distinguishing it from regression in melanoma."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"DF is the most <strong>commonly unnecessarily biopsied benign lesion</strong> in clinical practice — mastering its characteristic pattern alone dramatically reduces your false-positive excision rate."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Haemosiderotic DF</strong> adds brown globules to the classic pattern due to haemosiderin deposition. <strong>Atrophic DF</strong> may lack the peripheral network — but the dimple sign persists."},
+    ],[ // set 1
+      {icon:"⬜",dark:true,title:"The Clincher",text:"<strong>White network</strong> — a pale reticular structure in the centre of the lesion — is the most specific dermoscopic feature of dermatofibroma under polarised light, representing fibrosis."},
+      {icon:"🔵",dark:false,title:"Peripheral Pigment Ring",text:"A <strong>delicate peripheral pigment network</strong> surrounds the central white area — this combination of peripheral network plus central white is essentially diagnostic of DF."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>DF on the face</strong> is rare and may lack the classic pattern, showing only vessels or a non-specific appearance — facial location lowers your diagnostic confidence and raises biopsy threshold."},
+      {icon:"📐",dark:false,title:"Multiple DFs",text:"<strong>Multiple dermatofibromas</strong> (>5 lesions) may indicate an underlying systemic condition — autoimmune diseases (especially lupus), HIV infection, and haematological malignancies are associated."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"DF typically appears on the <strong>lower legs of young women</strong>, often at sites of minor trauma (insect bite, folliculitis). The history of minor trauma at the site is a helpful clinical pointer."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Aneurysmal (angiomatoid) DF</strong> shows red-blue lacunae mimicking haemangioma — the peripheral pigment network and dimple sign help distinguish it from a vascular lesion."},
+    ],[ // set 2
+      {icon:"⬜",dark:true,title:"The Clincher",text:"<strong>Four-dot clover</strong> structures at the periphery of a DF — representing follicular structures within the peripheral network — help confirm the diagnosis when the central white is subtle."},
+      {icon:"🔵",dark:false,title:"Homogeneous Centre",text:"In some DFs the central white area is replaced by a <strong>homogeneous light brown structureless zone</strong> — the lesion still retains the peripheral network and positive dimple sign."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>DF with regression-like features</strong> (LPLK-like DF) shows grey peppering in the central zone — this can be alarming but the peripheral network and clinical dimple sign are reassuring."},
+      {icon:"📐",dark:false,title:"Size Consideration",text:"DF larger than <strong>1.5cm</strong> should be biopsied even with typical dermoscopic features — rare malignant variants (dermatofibrosarcoma protuberans, DFSP) can be confused with large DF."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>DFSP (dermatofibrosarcoma protuberans)</strong> is a locally aggressive tumour that clinically resembles a large DF — dermoscopy shows a structureless pattern without the classic central white."},
+      {icon:"🎯",dark:false,title:"Remember",text:"The dimple sign is <strong>100% specific</strong> for DF when positive — no other lesion dimples on lateral compression. Use this clinical test routinely when you suspect DF."},
+    ],[ // set 3
+      {icon:"⬜",dark:true,title:"The Clincher",text:"<strong>Concentric rings</strong> of pigmentation — alternating lighter and darker zones from centre to periphery — is an under-recognised DF pattern that still shows the central white on polarised light."},
+      {icon:"🔵",dark:false,title:"Delicate Vessels",text:"<strong>Fine, non-arborising vessels</strong> within the peripheral network of DF are not a concern — they represent blood vessels in the fibrous stroma and are a normal finding in DF."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Scarring from previous trauma</strong> on the leg can produce a white central area with surrounding pigmentation mimicking DF — always look for the peripheral reticular network to confirm."},
+      {icon:"📐",dark:false,title:"Regressing DF",text:"DF can spontaneously involute over years — a <strong>regressing DF</strong> shows progressive enlargement of the central white area and shrinkage of the peripheral network. Document rather than excise."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"DF is associated with <strong>prior minor trauma</strong> in up to 20% of cases — asking about insect bites, folliculitis, or minor cuts at the site can reinforce your clinical diagnosis."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Eruptive DF</strong> — sudden appearance of multiple DFs over weeks to months — is a recognised association with HIV, lupus, and other immune dysregulation states. Investigate systemic cause."},
+    ],[ // set 4
+      {icon:"⬜",dark:true,title:"The Clincher",text:"The gestalt of DF: a <strong>firm, slightly depressed, fibrous nodule on the leg</strong> that dimples on compression. Dermoscopy confirms — central white, peripheral network. Biopsy rarely needed."},
+      {icon:"🔵",dark:false,title:"Melanocytic Mimicry",text:"Heavily pigmented DF can show a <strong>dense peripheral network</strong> mimicking a melanocytic lesion — but the central white patch and firm texture on palpation redirect the diagnosis."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Subcutaneous DF</strong> lacks dermal connection and may not dimple — it presents as a deep mobile nodule. Without the dimple sign, diagnosis requires histopathology."},
+      {icon:"📐",dark:false,title:"Histopathology",text:"DF shows <strong>storiform (cartwheel) pattern</strong> of spindle cells with collagen trapping at the periphery — understanding the histology helps you correlate the dermoscopic white central fibrosis."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Sclerotic fibroma</strong> (storiform collagenoma) is a rare DF variant associated with Cowden syndrome (PTEN mutation) — multiple lesions warrant genetic testing for this syndrome."},
+      {icon:"🎯",dark:false,title:"Remember",text:"Confident clinical diagnosis of DF using <strong>dermoscopy plus dimple sign</strong> avoids surgery in a lesion that will likely remain stable for decades — reassure and discharge the patient."},
+    ],
+  ],
+  vasc: [
+    [ // set 0
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Red lacunae</strong> — well-circumscribed, round-to-oval areas in red, red-blue, or dark red separated by pale septa — are the pathognomonic dermoscopic feature of haemangioma."},
+      {icon:"🟣",dark:false,title:"Colour Gradient",text:"Lacunae range from <strong>bright red (superficial) to violet or near-black (thrombosed)</strong> — the colour represents depth and age of the vascular lake, not malignant change."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Thrombosed haemangioma</strong> loses visible lacunae and appears as a homogeneous dark-blue or black nodule — it is frequently biopsied as suspected melanoma. Histopathology is often needed."},
+      {icon:"🩸",dark:false,title:"Angiokeratoma",text:"<strong>Angiokeratoma</strong> shows lacunae plus a dark peripheral veil and surface hyperkeratosis — the keratotic surface distinguishes it from a smooth haemangioma."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Pyogenic granuloma (lobular capillary haemangioma)</strong> shows a distinctive white rail-line pattern surrounding red lobular areas — the rails represent fibrous septa between vascular lobules."},
+      {icon:"🎯",dark:false,title:"Remember",text:"The <strong>red lacunar pattern</strong> is so specific for benign vascular lesions that its presence should immediately redirect you toward reassurance rather than concern about malignancy."},
+    ],[ // set 1
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Homogeneous red-blue pattern</strong> — a uniform red to blue-red colour without structures — is the dermoscopic pattern of a deeply situated haemangioma with overlying skin compression."},
+      {icon:"🔵",dark:false,title:"Diascopy",text:"Press a glass slide against a suspected vascular lesion — if it <strong>blanches completely (diascopy positive)</strong>, it confirms a blood-filled vascular space, essentially confirming a haemangioma."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Spitz naevus</strong> in a child can appear red and vascular-looking clinically — dermoscopy shows a starburst or dotted vessel pattern, not lacunae. Diascopy will not blanch a Spitz naevus."},
+      {icon:"📐",dark:false,title:"Venous Lake",text:"<strong>Venous lake</strong> on the lip or ear of an elderly patient shows a compressible blue lesion — dermoscopy shows a homogeneous blue pattern that fully blanches on diascopy."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Glomus tumour</strong> under the nail presents as a painful red subungual lesion — dermoscopy of the nail shows a pink to red blush and the clinical triad of pain, cold sensitivity, and subungual location."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Kaposi sarcoma</strong> in immunosuppressed patients may mimic haemangioma clinically — but it shows a rainbow pattern (multiple colours including white, pink, and red) and multiple lesions."},
+    ],[ // set 2
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>White rail lines</strong> — pale septa separating red lobular clusters — are pathognomonic for pyogenic granuloma and allow dermoscopic diagnosis without the need for biopsy in typical cases."},
+      {icon:"🔵",dark:false,title:"PG Collar",text:"Pyogenic granuloma often shows a <strong>white epidermal collarette</strong> at its base — this pale ring of compressed surrounding epidermis is a useful clinical and dermoscopic clue."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Amelanotic melanoma</strong> can appear as a bleeding red papule mimicking pyogenic granuloma — if any atypical vessels or white structureless areas are present, excise and send histology."},
+      {icon:"📐",dark:false,title:"PG Triggers",text:"PG is associated with <strong>pregnancy, trauma, isotretinoin, and anti-EGFR drugs</strong> — knowing the drug history guides you toward the diagnosis in non-typical presentations."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Recurrent PG</strong> after shave excision is common — multiple satellite lesions develop around the scar. Treatment requires deep excision or curettage and cautery of the feeding vessel."},
+      {icon:"🎯",dark:false,title:"Remember",text:"PG in children most commonly appears on the <strong>face and fingers</strong> after minor trauma. In adults, PG on the gingiva during pregnancy (epulis gravidarum) usually resolves postpartum."},
+    ],[ // set 3
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Dark lacunae with peripheral pale halos</strong> — dark vascular spaces surrounded by compressed pale skin — are seen in deep or involuting haemangiomas and represent thrombosed vascular lakes."},
+      {icon:"🔵",dark:false,title:"Infantile Haemangioma",text:"<strong>Infantile haemangioma</strong> involutes spontaneously by age 7–10 — dermoscopy shows progressive replacement of lacunae with white fibrous tissue as involution occurs."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Targetoid haemosiderotic haemangioma</strong> shows a central dark papule with an ecchymotic ring and pale outer halo — this alarming clinical appearance represents a benign vascular lesion."},
+      {icon:"📐",dark:false,title:"Cherry Angioma",text:"<strong>Cherry angiomas (Campbell de Morgan spots)</strong> — common red papules on the trunk of adults — show a classic lacunar pattern with a distinct red colour and are entirely benign."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Multiple eruptive haemangiomas</strong> in adults are associated with POEMS syndrome, BRAF inhibitor therapy, and liver disease — sudden onset of multiple angiomas warrants systemic investigation."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Microvenular haemangioma</strong> appears as a small red-violet papule on the trunk — dermoscopy shows fine, delicate vessels rather than lacunae, requiring biopsy for definitive diagnosis."},
+    ],[ // set 4
+      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Irregular red-blue blotches without structure</strong> — in a lesion that blanches on pressure — confirms a vascular lesion. Structure-less vascular lesions that don't blanch need biopsy."},
+      {icon:"🔵",dark:false,title:"Acroangiodermatitis",text:"<strong>Acroangiodermatitis (pseudo-Kaposi)</strong> — multiple purple papules on the lower legs — occurs in chronic venous insufficiency and arteriovenous malformations, not to be confused with true Kaposi."},
+      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Subungual haematoma</strong> is the most common mimic of subungual melanoma — diascopy, filing the nail, and watching for the haematoma to grow out with the nail confirm its benign nature."},
+      {icon:"📐",dark:false,title:"Lymphangioma",text:"<strong>Lymphangioma circumscriptum</strong> shows yellow-white lacunae (lymph, not blood) — the pale colour distinguishes it from haemangioma lacunae and is pathognomonic."},
+      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Arteriovenous malformation</strong> presents as a warm, pulsatile vascular plaque — dermoscopy adds little here; Doppler ultrasound and MRI are the investigations of choice."},
+      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Eccrine poroma</strong> on the sole presents as a red vascular-looking nodule — dermoscopy shows a distinctive pattern of dotted and hairpin vessels within a pink matrix, not lacunae."},
+    ],
+  ],
+};
 
-Diagnosis: ${c.meta.name}
-ISIC Image: ${c.isicId}
-Category: ${c.code}
-
-Write exactly 6 bite-sized learning nuggets about this diagnosis for dermoscopy education. Each nugget is sharp, clinically precise, and memorable.
-
-Return ONLY a JSON array of 6 objects, no markdown, no other text:
-[
-  { "icon": "🔴", "dark": true, "title": "The Clincher", "text": "The single most pathognomonic dermoscopic feature with <strong>key term bolded</strong>." },
-  { "icon": "🔵", "dark": false, "title": "Supporting Feature", "text": "Second key feature..." },
-  { "icon": "⚠️", "dark": false, "title": "Pitfall to Avoid", "text": "The most dangerous diagnostic error..." },
-  { "icon": "📐", "dark": false, "title": "Pattern Rule", "text": "A memorable rule or mnemonic..." },
-  { "icon": "🧠", "dark": false, "title": "Clinical Pearl", "text": "Management or clinical context..." },
-  { "icon": "🎯", "dark": false, "title": "Remember", "text": "One memorable fact to take away..." }
-]
-
-Rules:
-- Use <strong> tags to bold key dermoscopy terms
-- First nugget (dark:true) is always the single clinching feature
-- "Pitfall" nugget must name a specific diagnostic error clinicians make
-- Keep each text to 2 sentences maximum
-- Be specific, not generic`;
-
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }]
-      })
-    });
-    const data = await res.json();
-    const raw = data.content?.map(b=>b.text||'').join('').trim()||'';
-    const clean = raw.replace(/```json|```/g,'').trim();
-    return JSON.parse(clean);
-  } catch(e) {
-    // Fallback nuggets
-    return getFallbackNuggets(c.code);
-  }
-}
-
-function getFallbackNuggets(code) {
-  const F = {
-    mel: [
-      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Atypical pigment network</strong> with irregular meshwork, variable line thickness, and abrupt peripheral termination is the most important single feature of melanoma."},
-      {icon:"🔵",dark:false,title:"Regression Structures",text:"<strong>Blue-grey peppering</strong> within a white scar-like zone indicates previous tumour regression — a worrying prognostic sign when asymmetrically placed."},
-      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Do not dismiss a lesion because it lacks blue-black colour. <strong>Hypomelanotic melanoma</strong> can fool even experienced dermoscopists — look for structural asymmetry."},
-      {icon:"📐",dark:false,title:"3-Colour Rule",text:"Three or more distinct colours within a single lesion has high specificity for melanoma. Apply the <strong>3-colour rule</strong> as a quick screening step."},
-      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"The <strong>multicomponent pattern</strong> (≥3 structural zones) drives the decision to excise. When in doubt, the lesion comes off."},
-      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Pseudopods and streaks</strong> at the border represent confluent melanocyte nests pushing outward — always an indication for excision."},
-    ],
-    nv: [
-      {icon:"🟤",dark:true,title:"The Clincher",text:"<strong>Regular pigment network</strong> with uniform line thickness, consistent hole size, and symmetric peripheral fading is the benign naevus signature."},
-      {icon:"📏",dark:false,title:"Symmetry Assessment",text:"Mentally fold the lesion on both axes. A benign naevus shows <strong>structural and colour symmetry</strong> on both planes."},
-      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"Normal-appearing network on <strong>special sites</strong> (palms, soles, genitalia) requires different criteria — benign-looking network on the palm may be melanoma in situ."},
-      {icon:"📅",dark:false,title:"Follow-up Rule",text:"Stable naevi with typical pattern in patients under 40 need <strong>no routine follow-up</strong>. Baseline photography is reserved for high-risk patients."},
-      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"The <strong>ugly duckling sign</strong> outperforms individual lesion analysis in screening — any lesion unlike the patient's others demands scrutiny."},
-      {icon:"🎯",dark:false,title:"Remember",text:"Network fading is a benign sign. <strong>Network thickening toward the periphery</strong> is the inverse pattern and should prompt concern."},
-    ],
-    bcc: [
-      {icon:"🌳",dark:true,title:"The Clincher",text:"<strong>Arborising telangiectasia</strong> — large-calibre branching vessels with tree-like structure, in sharp focus under polarised light — is highly specific for BCC."},
-      {icon:"🔵",dark:false,title:"Blue-Grey Nests",text:"<strong>Ovoid blue-grey nests</strong> are large, well-demarcated structures representing pigmented tumour islands — their presence confirms BCC even without visible vessels."},
-      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Morphoeic BCC</strong> may show only white structureless areas with scarce vessels. On the face, any unexplained white area with subtle vessels warrants biopsy."},
-      {icon:"✨",dark:false,title:"Polarised Secret",text:"<strong>Chrysalis structures</strong> (shiny white lines, only visible under polarised dermoscopy) represent fibrous stroma — highly specific for BCC and thick melanoma."},
-      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"BCC essentially <strong>never metastasises</strong>, but facial BCC can cause devastating local destruction. Timely dermoscopic diagnosis prevents complex reconstruction."},
-      {icon:"🎯",dark:false,title:"Remember",text:"Superficial BCC shows <strong>multiple small erosions</strong> and fine vessels rather than arborising telangiectasia — subtype recognition changes treatment approach."},
-    ],
-    akiec: [
-      {icon:"🌀",dark:true,title:"The Clincher",text:"<strong>Coiled (glomerular) vessels</strong> — tightly wound capillaries in clusters on an erythematous background — are the most specific dermoscopic feature of Bowen's disease."},
-      {icon:"🍓",dark:false,title:"AK Pattern",text:"Actinic keratosis shows the <strong>strawberry pattern</strong>: pink-red pseudo-network with white follicular openings surrounded by red halos."},
-      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Irritated or inflamed AK</strong> can mimic psoriasis clinically. Dermoscopy — specifically the vessel pattern — differentiates them reliably."},
-      {icon:"📐",dark:false,title:"Invasion Sign",text:"White structureless areas within a Bowen's lesion signal <strong>invasion into SCC</strong>. Their presence changes management from topical to surgical."},
-      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"On the <strong>face of elderly patients</strong>, the AK field may extend beyond visible borders — treat the field, not just the lesion."},
-      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Bowen's disease of the nail unit</strong> and mucosae presents differently — periungual HPV-related lesions can simulate benign periungual warts."},
-    ],
-    bkl: [
-      {icon:"⬛",dark:true,title:"The Clincher",text:"<strong>Comedo-like openings</strong> (sharply demarcated crypts) combined with <strong>milia-like cysts</strong> (white-yellow globules) are pathognomonic for seborrhoeic keratosis."},
-      {icon:"🧠",dark:false,title:"Cerebriform Pattern",text:"The <strong>gyrus-and-sulcus pattern</strong> — resembling a brain surface — is seen in heavily pigmented SK and is one of dermoscopy's most visually distinctive patterns."},
-      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Irritated SK</strong> destroys the typical pattern — inflammation introduces vessels and regression-like structures. If the typical pattern is absent, biopsy is mandatory."},
-      {icon:"🌞",dark:false,title:"Solar Lentigo",text:"<strong>Solar lentigo</strong> shows a moth-eaten border pattern and a sharp demarcation — a distinct entity within the BKL category that is common on sun-exposed sites."},
-      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>LPLK (lichen planus-like keratosis)</strong> is an involuting SK — it shows regression features mimicking melanoma. Single lesion in an elderly patient is the clinical clue."},
-      {icon:"🎯",dark:false,title:"Remember",text:"SK can occur within a naevus as a <strong>collision lesion</strong>. If you see SK features in part of a lesion and naevus features in another — that's the explanation."},
-    ],
-    df: [
-      {icon:"⬜",dark:true,title:"The Clincher",text:"<strong>Central white scar-like patch</strong> surrounded by a delicate peripheral pigment network is pathognomonic for dermatofibroma — no other diagnosis produces this combination."},
-      {icon:"👆",dark:false,title:"The Dimple Sign",text:"Lateral compression produces a <strong>central dimple</strong> — a clinical finding unique to dermatofibroma, reflecting its fibrous tethering to the deep dermis."},
-      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Cellular dermatofibroma</strong> shows atypical dermoscopic features including irregular vessels. If the classic pattern is absent, biopsy rather than reassure."},
-      {icon:"💡",dark:false,title:"Polarised Insight",text:"Under polarised light, the central white area shows <strong>bright shiny structures</strong> representing dense collagenous fibrosis — not regression as in melanoma."},
-      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"Dermatofibroma is the most <strong>commonly biopsied benign lesion</strong> in practice. Mastering its pattern saves patients from unnecessary procedures."},
-      {icon:"🎯",dark:false,title:"Remember",text:"<strong>Haemosiderotic DF</strong> adds brown globules to the classic pattern. <strong>Atrophic DF</strong> may lack the peripheral network — variants exist but the dimple sign persists."},
-    ],
-    vasc: [
-      {icon:"🔴",dark:true,title:"The Clincher",text:"<strong>Red lacunae</strong> — well-circumscribed, round-to-oval, red to red-blue areas separated by whitish septa — are the pathognomonic feature of haemangioma."},
-      {icon:"🟣",dark:false,title:"Colour Spectrum",text:"Lacunae range from <strong>bright red (superficial) to dark violet or black</strong> (thrombosed) — the darker the haemangioma, the greater the clinical concern but still benign."},
-      {icon:"⚠️",dark:false,title:"Pitfall to Avoid",text:"<strong>Thrombosed haemangioma</strong> can mimic melanoma clinically and on dermoscopy — dark structureless areas with no visible lacunae. Biopsy if uncertain."},
-      {icon:"🩸",dark:false,title:"Angiokeratoma",text:"<strong>Angiokeratoma</strong> shows lacunae plus a dark veil and a scaly surface — distinguishable from haemangioma by its surface hyperkeratosis."},
-      {icon:"🧠",dark:false,title:"Clinical Pearl",text:"<strong>Pyogenic granuloma</strong> shows white rail lines surrounding red lobular vascular areas — a distinct vascular pattern that clinches the diagnosis."},
-      {icon:"🎯",dark:false,title:"Remember",text:"The <strong>red lacunar pattern</strong> is so specific for benign vascular lesions that seeing it should immediately trigger reassurance rather than concern."},
-    ],
-  };
-  return F[code] || F.nv;
+// Pick nugget set based on case index — rotates through all 5 sets
+function getNuggets(code, idx) {
+  const sets = NUGGETS[code] || NUGGETS.nv;
+  return sets[idx % sets.length];
 }
 
 // ─── Reveal ───────────────────────────────────────────────────────────────────
-async function reveal() {
+function reveal() {
   if (revealed) return;
   revealed = true;
   document.getElementById('revealBtn').classList.add('gone');
   document.getElementById('locked').style.display = 'none';
 
+  const nuggets = getNuggets(currentCase.code, curIdx);
   const grid = document.getElementById('nuggetsGrid');
-  // Show skeleton
-  grid.innerHTML = Array(6).fill(`<div class="skel-nugget"><div class="skel s"></div><div class="skel m"></div><div class="skel l"></div><div class="skel m"></div></div>`).join('');
-  grid.classList.add('show');
-
-  // Fetch AI nuggets
-  const nuggets = await fetchNuggets(currentCase);
 
   grid.innerHTML = nuggets.map((n,i) => `
     <div class="nugget ${n.dark?'dark':''}" data-n="${i+1}" style="animation-delay:${i*0.07}s">
@@ -620,6 +782,7 @@ async function reveal() {
     </div>
   `).join('');
 
+  grid.classList.add('show');
   document.getElementById('bottomBar').classList.add('show');
   grid.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
